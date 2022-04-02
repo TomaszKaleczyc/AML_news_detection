@@ -2,7 +2,12 @@
 
 ![cover](data/cover.JPG)
 
-Identification and classification of news articles related to money laundering using a [Bidirectional Encoder Representations from Transformers](https://en.wikipedia.org/wiki/BERT_(language_model)) (or BERT for short - an example of a [Deep Learning Transformer](https://en.wikipedia.org/wiki/Transformer_(machine_learning_model)) architecture).
+This project is intended to create a model for identification and classification of news articles related to money laundering based on a [Bidirectional Encoder Representations from Transformers](https://en.wikipedia.org/wiki/BERT_(language_model)) (or BERT for short - an example of a [Deep Learning Transformer](https://en.wikipedia.org/wiki/Transformer_(machine_learning_model)) architecture).
+
+The classification is aimed at determining whether a given article belongs to one of the below classes:
+* non-AML related
+* AML related - allegations / accusations / charges context
+* AML related - conviction / sentencing context
 
 ## Resources
 
