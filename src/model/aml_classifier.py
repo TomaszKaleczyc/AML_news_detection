@@ -1,3 +1,5 @@
+import numpy as np
+
 import torch
 import torch.nn as nn
 from pytorch_lightning import LightningModule
@@ -48,10 +50,15 @@ class AMLClassifier(LightningModule):
         """
         Defines the model predictor
         """
-        self.predictor = nn.Linear(
-            self.config.OVERARCHING_NETWORK_OUTPUT_SIZE, 
-            self.num_classes
-            )
+        self.predictor = nn.Sequential(
+            nn.Dropout(p=self.dropout_rate),
+            nn.Linear(
+                self.config.OVERARCHING_NETWORK_OUTPUT_SIZE, 30
+            ),
+            nn.ReLU(),
+            nn.Linear(30, self.num_classes)
+
+        ) 
 
     def forward(self, article_part_tokens):
         """
@@ -67,5 +74,8 @@ class AMLClassifier(LightningModule):
                 )
             output_embeddings.append(article_part_features['pooler_output'])
         output_embeddings = torch.cat(output_embeddings).unsqueeze(0)
-        _, (h_t, h_c) = self.lstm(output_embeddings)
-        return self.predictor(h_t.view(-1, 100))
+        lstm_outputs, _ = self.lstm(output_embeddings)
+        article_idxs = np.arange(len(lstm_outputs))
+        last_time_step_idx = len(article_part_tokens) - 1
+        last_time_step = lstm_outputs[article_idxs, last_time_step_idx]
+        return self.predictor(last_time_step)
