@@ -9,6 +9,7 @@ opencv-python
 opencv-python-headless==4.5.2.52
 pandas==1.1.5
 Pillow==8.3.1
+scikit-learn==0.24.2
 tensorboard
 tqdm==4.61.1
 torch==1.7.1
