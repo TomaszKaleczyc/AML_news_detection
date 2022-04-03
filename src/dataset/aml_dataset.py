@@ -31,6 +31,7 @@ class AMLDataset(Dataset):
             dataset_config_path: str = 'settings/dataset_settings.yaml',
             verbose=True
         ):
+        super().__init__()
         self.dataset_name = dataset_name
         self.verbose = verbose
         self.sequence_length = sequence_length
