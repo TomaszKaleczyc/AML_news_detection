@@ -81,7 +81,12 @@ class AMLDataset(Dataset):
         for article_content in tqdm(article_contents):
             overlapping_content = self._get_overlapping_contents(article_content)
             article_tokens = [
-                self.tokeniser(article_part, max_length=self.sequence_length, truncation=True)
+                self.tokeniser(
+                    article_part, 
+                    max_length=self.sequence_length, 
+                    truncation=True, 
+                    return_tensors="pt"
+                    )
                 for article_part in overlapping_content
             ]
             tokens.append(article_tokens)
