@@ -4,6 +4,7 @@ from torch.utils.data import DataLoader
 from pytorch_lightning import LightningDataModule
 
 from .aml_dataset import AMLDataset
+from utilities import utils
 
 
 class AMLDataModule(LightningDataModule):

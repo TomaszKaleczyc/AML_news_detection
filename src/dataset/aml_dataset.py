@@ -51,7 +51,7 @@ class AMLDataset(Dataset):
 
     @property
     def num_classes(self) -> int:
-        return len(self.labels)
+        return len(self.articles['label'].unique())
 
     def _get_articles(self) -> DataFrame:
         """

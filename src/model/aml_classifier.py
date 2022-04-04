@@ -25,13 +25,16 @@ class AMLClassifier(LightningModule):
             self, 
             num_classes: int = 3,
             dropout_rate: float = 0.5,
+            num_epochs_freeze_pretrained: int = 2,
             model_config_path: str = 'settings/model_settings.yaml'
         ):
         super().__init__()
         self.save_hyperparameters()
         self.num_classes = num_classes
         self.dropout_rate = dropout_rate
+        self.num_epochs_freeze_pretrained = num_epochs_freeze_pretrained
         self.config = utils.load_config(model_config_path)
+        self.pretrained_weights_frozen = False
 
         # define the model architecture:
         self._setup_feature_extractor()
@@ -46,7 +49,7 @@ class AMLClassifier(LightningModule):
         Defines the base feature extraction model
         """
         self.feature_extractor = BertModel.from_pretrained(self.config.BERT_MODEL)
-        
+
     def _setup_aggregating_network(self):
         """
         Defines the feature collating network
