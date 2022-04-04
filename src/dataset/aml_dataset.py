@@ -1,6 +1,6 @@
 import re
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 import pandas as pd
 from pandas import DataFrame
@@ -80,15 +80,7 @@ class AMLDataset(Dataset):
         print('Tokenisation of content strips:')
         for article_content in tqdm(article_contents):
             overlapping_content = self._get_overlapping_contents(article_content)
-            article_tokens = [
-                self.tokeniser(
-                    article_part, 
-                    max_length=self.sequence_length, 
-                    truncation=True, 
-                    return_tensors="pt"
-                    )
-                for article_part in overlapping_content
-            ]
+            article_tokens = self._get_article_tokens(overlapping_content)
             tokens.append(article_tokens)
         return tokens
 
@@ -109,6 +101,28 @@ class AMLDataset(Dataset):
                 ]
             output.append(' '.join(split))
         return output
+
+    def _get_article_tokens(self, overlapping_content: List[str]) -> Dict[str, Any]:
+        """
+        Returns all article part tokens in a single dictionary
+        """
+        article_tokens_list = [
+            self.tokeniser(
+                article_part, 
+                max_length=self.sequence_length, 
+                truncation=True, 
+                return_tensors="pt",
+                padding="max_length"
+                )
+            for article_part in overlapping_content
+        ]
+        article_tokens = {
+            'input_ids': torch.cat([atricle_token['input_ids'] for atricle_token in article_tokens_list]),
+            'attention_mask': torch.cat([atricle_token['attention_mask'] for atricle_token in article_tokens_list]),
+            'token_type_ids': torch.cat([atricle_token['token_type_ids'] for atricle_token in article_tokens_list]),
+            'num_splits': len(article_tokens_list)
+        }
+        return article_tokens
 
     @staticmethod
     def _clean_article_contents(article_contents: str) -> str:
@@ -131,4 +145,3 @@ class AMLDataset(Dataset):
         overlapping_tokens = self.tokens[idx]
         target = torch.tensor(self.labels[idx])
         return overlapping_tokens, target
-

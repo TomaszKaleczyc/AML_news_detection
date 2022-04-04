@@ -57,25 +57,22 @@ class AMLClassifier(LightningModule):
             ),
             nn.ReLU(),
             nn.Linear(30, self.num_classes)
-
         ) 
 
-    def forward(self, article_part_tokens):
+    def forward(self, article_batch):
         """
         Defines the model forward pass
         """
         output_embeddings = []
-        # TODO: turn this into a single tensor for efficiency:
-        for article_part_token in article_part_tokens:
-            article_part_features = self.feature_extractor(
-                article_part_token['input_ids'].squeeze(1),
-                attention_mask=article_part_token['attention_mask'].squeeze(1),
-                token_type_ids=article_part_token['token_type_ids'].squeeze(1)
-                )
-            output_embeddings.append(article_part_features['pooler_output'])
-        output_embeddings = torch.cat(output_embeddings).unsqueeze(0)
+        # TODO: refactor to allow batch processing:
+        article_part_features = self.feature_extractor(
+            article_batch['input_ids'].squeeze(0),
+            attention_mask=article_batch['attention_mask'].squeeze(0),
+            token_type_ids=article_batch['token_type_ids'].squeeze(0)
+            )
+        output_embeddings = article_part_features['pooler_output'].unsqueeze(0)
         lstm_outputs, _ = self.lstm(output_embeddings)
         article_idxs = np.arange(len(lstm_outputs))
-        last_time_step_idx = len(article_part_tokens) - 1
+        last_time_step_idx = article_batch['num_splits'] - 1
         last_time_step = lstm_outputs[article_idxs, last_time_step_idx]
         return self.predictor(last_time_step)
