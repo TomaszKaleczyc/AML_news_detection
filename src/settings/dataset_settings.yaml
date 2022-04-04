@@ -2,6 +2,7 @@ DATASET_PATH: '../data'
 CLASS_COLUMN_NAME: 'article_class'
 ARTICLE_CONTENTS_COLUMN_NAME: 'contents'
 BERT_MODEL: 'bert-base-cased'
+NUM_WORKERS: 8
 CLASS_MAPPING:
   no_aml: 0
   aml_aac: 1

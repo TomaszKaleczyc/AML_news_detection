@@ -23,6 +23,7 @@ class AMLDataModule(LightningDataModule):
         self.overlap = overlap
         self.batch_size = batch_size
         self.dataset_config_path = dataset_config_path
+        self.config = utils.load_config(self.dataset_config_path)
 
     def train_dataloader(self) -> Union[DataLoader, List[DataLoader], Dict[str, DataLoader]]:
         """
@@ -33,7 +34,12 @@ class AMLDataModule(LightningDataModule):
             sequence_length=self.sequence_length,
             overlap=self.overlap
         )
-        return DataLoader(train_dataset, batch_size=self.batch_size, shuffle=True)
+        return DataLoader(
+            train_dataset, 
+            batch_size=self.batch_size, 
+            shuffle=True,
+            num_workers=int(self.config.NUM_WORKERS)
+            )
 
     def val_dataloader(self) -> Union[DataLoader, List[DataLoader], Dict[str, DataLoader]]:
         """
@@ -45,7 +51,12 @@ class AMLDataModule(LightningDataModule):
             sequence_length=self.sequence_length,
             overlap=self.overlap
         )
-        return DataLoader(test_dataloader, batch_size=self.batch_size, shuffle=False)
+        return DataLoader(
+            test_dataloader, 
+            batch_size=self.batch_size, 
+            shuffle=False,
+            num_workers=int(self.config.NUM_WORKERS)
+            )
 
     def test_dataloader(self) -> Union[DataLoader, List[DataLoader]]:
         raise NotImplementedError

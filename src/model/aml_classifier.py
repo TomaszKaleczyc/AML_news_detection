@@ -39,7 +39,6 @@ class AMLClassifier(LightningModule):
         self._setup_predictor()
 
         # define evaluation metrics:
-        self.loss_metric = torchmetrics.AverageMeter().to(self.device)
         self.accuracy = torchmetrics.Accuracy(num_classes=self.num_classes).to(self.device)
 
     def _setup_feature_extractor(self):
@@ -103,31 +102,31 @@ class AMLClassifier(LightningModule):
         logits = self(tokens)
         loss = criterion(logits, labels)
         if eval:
-            self.loss_metric.update(loss)
             self.accuracy.update(logits, labels)
         return loss
 
-    def training_step(self, batch: AMLBatch) -> Tensor:
+    def training_step(self, batch: AMLBatch, batch_idx: int) -> Tensor:
         loss = self._loss_step(batch, eval=False)
         self.log('train/loss', loss)
         return loss
         
-    def validation_step(self, batch: AMLBatch) -> Tensor:
+    def validation_step(self, batch: AMLBatch, batch_idx: int) -> Tensor:
         loss = self._loss_step(batch, eval=True)
         self.log('val/loss', loss)
 
     def validation_epoch_end(self, outputs) -> None:
         accuracy = self.accuracy.compute()
         self.log('val/accuracy', accuracy)
+        print('val/accuracy', accuracy)
         self.accuracy.reset()
 
     def configure_optimizers(self):
         parameter_groups = [
-            {'params': self.feature_extractor.parameters(), 'weight_decay': self.config.FEATURE_EXTRACTOR_WEIGHT_DECAY},
-            {'params': self.image_vector_creator.parameters(), 'weight_decay': self.config.AGGREGATING_NETWORK_WEIGHT_DECAY},
-            {'params': self.predictor.parameters(), 'weight_decay': self.config.PREDICTOR_WEIGHT_DECAY}
+            {'params': self.feature_extractor.parameters(), 'weight_decay': float(self.config.FEATURE_EXTRACTOR_WEIGHT_DECAY)},
+            {'params': self.aggregating_network.parameters(), 'weight_decay': float(self.config.AGGREGATING_NETWORK_WEIGHT_DECAY)},
+            {'params': self.predictor.parameters(), 'weight_decay': float(self.config.PREDICTOR_WEIGHT_DECAY)}
         ]
-        return torch.optim.Adam(parameter_groups, lr=self.config.LEARNING_RATE)
+        return torch.optim.Adam(parameter_groups, lr=float(self.config.LEARNING_RATE))
 
     def predict(self, tokens: Dict[str, Tensor]) -> List[Tuple[str, float]]:
         """
