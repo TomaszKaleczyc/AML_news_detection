@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Tuple
+from typing import Any, Callable, Dict, List, Tuple
 import numpy as np
 
 import torch
@@ -24,16 +24,16 @@ class AMLClassifier(LightningModule):
     def __init__(
             self, 
             num_classes: int = 3,
-            dropout_rate: float = 0.5,
             num_epochs_freeze_pretrained: int = 2,
             model_config_path: str = 'settings/model_settings.yaml'
         ):
         super().__init__()
         self.save_hyperparameters()
         self.num_classes = num_classes
-        self.dropout_rate = dropout_rate
+        
         self.num_epochs_freeze_pretrained = num_epochs_freeze_pretrained
         self.config = utils.load_config(model_config_path)
+        self.dropout_rate = self.config.DROPOUT_RATE
         self.pretrained_weights_frozen = False
 
         # define the model architecture:
@@ -120,8 +120,20 @@ class AMLClassifier(LightningModule):
     def validation_epoch_end(self, outputs) -> None:
         accuracy = self.accuracy.compute()
         self.log('val/accuracy', accuracy)
-        print('val/accuracy', accuracy)
+        print('val/accuracy', accuracy.item())
         self.accuracy.reset()
+
+    @property
+    def optimizer(self) -> Callable:
+        """
+        Returns the configured optimizer
+        """
+        optimizer = self.config.OPTIMIZER
+        if optimizer == 'Adam':
+            return torch.optim.Adam
+        if optimizer == 'SGD':
+            return torch.optim.SGD
+        raise NotImplementedError
 
     def configure_optimizers(self):
         parameter_groups = [
@@ -129,7 +141,7 @@ class AMLClassifier(LightningModule):
             {'params': self.aggregating_network.parameters(), 'weight_decay': float(self.config.AGGREGATING_NETWORK_WEIGHT_DECAY)},
             {'params': self.predictor.parameters(), 'weight_decay': float(self.config.PREDICTOR_WEIGHT_DECAY)}
         ]
-        return torch.optim.Adam(parameter_groups, lr=float(self.config.LEARNING_RATE))
+        return self.optimizer(parameter_groups, lr=float(self.config.LEARNING_RATE))
 
     def predict(self, tokens: Dict[str, Tensor]) -> List[Tuple[str, float]]:
         """
