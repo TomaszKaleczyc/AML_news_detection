@@ -1,11 +1,19 @@
+from typing import Any, Dict, List, Tuple
 import numpy as np
 
 import torch
+from torch import Tensor
+import torchmetrics
 import torch.nn as nn
-from pytorch_lightning import LightningModule
+from torch.nn import functional as F, Module
 from transformers import BertModel
 
+from pytorch_lightning import LightningModule
+
 from utilities import utils
+
+
+AMLBatch = Tuple[Dict[str, Tensor], Tensor]
 
 
 class AMLClassifier(LightningModule):
@@ -20,14 +28,19 @@ class AMLClassifier(LightningModule):
             model_config_path: str = 'settings/model_settings.yaml'
         ):
         super().__init__()
+        self.save_hyperparameters()
         self.num_classes = num_classes
         self.dropout_rate = dropout_rate
         self.config = utils.load_config(model_config_path)
 
         # define the model architecture:
         self._setup_feature_extractor()
-        self._setup_overarching_network()
+        self._setup_aggregating_network()
         self._setup_predictor()
+
+        # define evaluation metrics:
+        self.loss_metric = torchmetrics.AverageMeter().to(self.device)
+        self.accuracy = torchmetrics.Accuracy(num_classes=self.num_classes).to(self.device)
 
     def _setup_feature_extractor(self):
         """
@@ -35,13 +48,13 @@ class AMLClassifier(LightningModule):
         """
         self.feature_extractor = BertModel.from_pretrained(self.config.BERT_MODEL)
         
-    def _setup_overarching_network(self):
+    def _setup_aggregating_network(self):
         """
         Defines the feature collating network
         """
-        self.lstm = nn.LSTM(
+        self.aggregating_network = nn.LSTM(
             self.config.BERT_MODEL_OUTPUT_SIZE, 
-            self.config.OVERARCHING_NETWORK_OUTPUT_SIZE,
+            self.config.AGGREGATING_NETWORK_OUTPUT_SIZE,
             num_layers=1,
             bidirectional=False
             )
@@ -53,7 +66,7 @@ class AMLClassifier(LightningModule):
         self.predictor = nn.Sequential(
             nn.Dropout(p=self.dropout_rate),
             nn.Linear(
-                self.config.OVERARCHING_NETWORK_OUTPUT_SIZE, 30
+                self.config.AGGREGATING_NETWORK_OUTPUT_SIZE, 30
             ),
             nn.ReLU(),
             nn.Linear(30, self.num_classes)
@@ -71,8 +84,64 @@ class AMLClassifier(LightningModule):
             token_type_ids=article_batch['token_type_ids'].squeeze(0)
             )
         output_embeddings = article_part_features['pooler_output'].unsqueeze(0)
-        lstm_outputs, _ = self.lstm(output_embeddings)
-        article_idxs = np.arange(len(lstm_outputs))
+        aggregated_outputs, _ = self.aggregating_network(output_embeddings)
+        article_idxs = np.arange(len(aggregated_outputs))
         last_time_step_idx = article_batch['num_splits'] - 1
-        last_time_step = lstm_outputs[article_idxs, last_time_step_idx]
+        last_time_step = aggregated_outputs[article_idxs, last_time_step_idx]
         return self.predictor(last_time_step)
+
+    def _loss_step(
+            self, 
+            batch: AMLBatch, 
+            eval: bool, 
+            criterion: Module = F.cross_entropy
+        ) -> Tensor:
+        """
+        Definition of a standard loss step
+        """
+        tokens, labels = batch
+        logits = self(tokens)
+        loss = criterion(logits, labels)
+        if eval:
+            self.loss_metric.update(loss)
+            self.accuracy.update(logits, labels)
+        return loss
+
+    def training_step(self, batch: AMLBatch) -> Tensor:
+        loss = self._loss_step(batch, eval=False)
+        self.log('train/loss', loss)
+        return loss
+        
+    def validation_step(self, batch: AMLBatch) -> Tensor:
+        loss = self._loss_step(batch, eval=True)
+        self.log('val/loss', loss)
+
+    def validation_epoch_end(self, outputs) -> None:
+        accuracy = self.accuracy.compute()
+        self.log('val/accuracy', accuracy)
+        self.accuracy.reset()
+
+    def configure_optimizers(self):
+        parameter_groups = [
+            {'params': self.feature_extractor.parameters(), 'weight_decay': self.config.FEATURE_EXTRACTOR_WEIGHT_DECAY},
+            {'params': self.image_vector_creator.parameters(), 'weight_decay': self.config.AGGREGATING_NETWORK_WEIGHT_DECAY},
+            {'params': self.predictor.parameters(), 'weight_decay': self.config.PREDICTOR_WEIGHT_DECAY}
+        ]
+        return torch.optim.Adam(parameter_groups, lr=self.config.LEARNING_RATE)
+
+    def predict(self, tokens: Dict[str, Tensor]) -> List[Tuple[str, float]]:
+        """
+        Returns prediction results on a given batch
+        """
+        self.eval()
+        logits = self(tokens)
+        probabilities = F.softmax(logits)
+        predicted_classes = probabilities.argmax(dim=1)
+        output = [
+            (
+                self.config.OUTPUT_MAPPING[predicted_class.item()], 
+                probabilities[idx][predicted_class.item()].item()
+            )
+            for idx, predicted_class in enumerate(predicted_classes)
+        ]
+        return output
