@@ -14,7 +14,7 @@ help:
 
 create-env:
 	@echo "======================== Creating the project virtual environment ========================" 
-	python3 -m virtualenv --system-site-packages -p python3.6 $(VENV_PATH)
+	python3 -m virtualenv --system-site-packages -p python3.8 $(VENV_PATH)
 	. $(VENV_ACTIVATE_PATH) && \
 	python3 -m pip install pip --upgrade && \
 	python3 -m pip install -r $(REQUIREMENTS_PATH)

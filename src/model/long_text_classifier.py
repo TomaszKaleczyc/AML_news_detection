@@ -6,7 +6,7 @@ from torch import Tensor
 import torchmetrics
 import torch.nn as nn
 from torch.nn import functional as F, Module
-from transformers import BertModel
+from transformers import BertModel, AdamW
 
 from pytorch_lightning import LightningModule
 
@@ -25,8 +25,7 @@ class LongTextClassifier(LightningModule):
             self, 
             num_classes: int,
             config_path: str,
-            num_epochs_freeze_pretrained: int = 2,
-            
+            num_epochs_freeze_pretrained: int,
         ):
         super().__init__()
         self.save_hyperparameters()
@@ -132,6 +131,8 @@ class LongTextClassifier(LightningModule):
         optimizer = self.config.OPTIMIZER
         if optimizer == 'Adam':
             return torch.optim.Adam
+        if optimizer == 'AdamW':
+            return AdamW
         if optimizer == 'SGD':
             return torch.optim.SGD
         raise NotImplementedError
