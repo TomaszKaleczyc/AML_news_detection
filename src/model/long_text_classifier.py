@@ -16,23 +16,24 @@ from utilities import utils
 AMLBatch = Tuple[Dict[str, Tensor], Tensor]
 
 
-class AMLClassifier(LightningModule):
+class LongTextClassifier(LightningModule):
     """
     RoBERT model for AML article classification
     """
 
     def __init__(
             self, 
-            num_classes: int = 3,
+            num_classes: int,
+            config_path: str,
             num_epochs_freeze_pretrained: int = 2,
-            model_config_path: str = 'settings/model_settings.yaml'
+            
         ):
         super().__init__()
         self.save_hyperparameters()
         self.num_classes = num_classes
         
         self.num_epochs_freeze_pretrained = num_epochs_freeze_pretrained
-        self.config = utils.load_config(model_config_path)
+        self.config = utils.load_config(config_path)
         self.dropout_rate = self.config.DROPOUT_RATE
         self.pretrained_weights_frozen = False
 
@@ -58,7 +59,7 @@ class AMLClassifier(LightningModule):
             self.config.BERT_MODEL_OUTPUT_SIZE, 
             self.config.AGGREGATING_NETWORK_OUTPUT_SIZE,
             num_layers=1,
-            bidirectional=False
+            bidirectional=False,
             )
 
     def _setup_predictor(self):
@@ -151,9 +152,10 @@ class AMLClassifier(LightningModule):
         logits = self(tokens)
         probabilities = F.softmax(logits)
         predicted_classes = probabilities.argmax(dim=1)
+        output_mapping = utils.invert_dictionary(self.config.CLASS_MAPPING)
         output = [
             (
-                self.config.OUTPUT_MAPPING[predicted_class.item()], 
+                output_mapping[predicted_class.item()], 
                 probabilities[idx][predicted_class.item()].item()
             )
             for idx, predicted_class in enumerate(predicted_classes)

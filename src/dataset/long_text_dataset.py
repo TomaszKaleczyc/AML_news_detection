@@ -18,7 +18,7 @@ from utilities import utils
 OverlappingTokens = List[List[BatchEncoding]]
 
 
-class AMLDataset(Dataset):
+class LongTextDataset(Dataset):
     """
     Manages the model dataset
     """
@@ -28,8 +28,8 @@ class AMLDataset(Dataset):
             dataset_name: str, 
             sequence_length: int,
             overlap: int,
-            dataset_config_path: str = 'settings/dataset_settings.yaml',
-            verbose=True
+            config_path: str,
+            verbose: bool = True
         ):
         super().__init__()
         self.dataset_name = dataset_name
@@ -38,9 +38,12 @@ class AMLDataset(Dataset):
         self.overlap = overlap
         assert self.overlap < self.sequence_length, 'The overlap should not exceed the sequence length'
         
-        self.config = utils.load_config(dataset_config_path)
+        self.config = utils.load_config(config_path)
         self.articles = self._get_articles()
-        self.tokeniser = transformers.BertTokenizer.from_pretrained(self.config.BERT_MODEL)
+        self.tokeniser = transformers.BertTokenizer.from_pretrained(
+            self.config.BERT_MODEL, 
+            do_lower_case=True
+            )
         self.tokens = self._get_tokens()
         if self.verbose:
             self._summarise_dataset()
