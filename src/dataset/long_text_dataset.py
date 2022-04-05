@@ -2,6 +2,7 @@ import re
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
+import numpy as np
 import pandas as pd
 from pandas import DataFrame
 from tqdm.notebook import tqdm
@@ -29,10 +30,12 @@ class LongTextDataset(Dataset):
             sequence_length: int,
             overlap: int,
             config_path: str,
+            eval_dataset: bool,
             verbose: bool = True
         ):
         super().__init__()
         self.dataset_name = dataset_name
+        self.eval_dataset = eval_dataset
         self.verbose = verbose
         self.sequence_length = sequence_length
         self.overlap = overlap
@@ -40,6 +43,7 @@ class LongTextDataset(Dataset):
         
         self.config = utils.load_config(config_path)
         self.articles = self._get_articles()
+        self._perform_upsampling()
         self.tokeniser = transformers.BertTokenizer.from_pretrained(
             self.config.BERT_MODEL, 
             do_lower_case=True
@@ -64,6 +68,22 @@ class LongTextDataset(Dataset):
         articles = pd.read_csv(dataset_path/f'{self.dataset_name}.csv', index_col=0)
         articles['label'] = articles[self.config.CLASS_COLUMN_NAME].replace(self.config.CLASS_MAPPING)
         return articles
+
+    def _perform_upsampling(self):
+        """
+        Upsamples the dataset as per configuration settings
+        """
+        upsampling_ratio = int(self.config.UPSAMPLING_RATIO)
+        if not upsampling_ratio or self.eval_dataset:
+            return
+        num_upsamples = len(self.articles) * upsampling_ratio
+        upsamples = self.articles.sample(
+            n=num_upsamples, 
+            random_state=self.config.RANDOM_STATE,
+            replace=True
+            )
+        self.articles = pd.concat((self.articles, upsamples))
+        print(f'Upsampled {num_upsamples} samples')
 
     def _summarise_dataset(self):
         """

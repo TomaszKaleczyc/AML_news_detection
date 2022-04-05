@@ -39,6 +39,7 @@ class LongTextDataModule(LightningDataModule):
             sequence_length=self.sequence_length,
             overlap=self.overlap,
             config_path=self.config_path,
+            eval_dataset=False,
         )
         return DataLoader(
             train_dataset, 
@@ -57,6 +58,7 @@ class LongTextDataModule(LightningDataModule):
             sequence_length=self.sequence_length,
             overlap=self.overlap,
             config_path=self.config_path,
+            eval_dataset=True,
         )
         return DataLoader(
             test_dataloader, 

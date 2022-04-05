@@ -66,5 +66,5 @@ For the purpose of this analysis, due to time and capacity constraints we will u
 1. `predictor` - a custom fully-connected classifier that transforms the final LSTM layer into the output prediction logits
 
 The analysis will be described in separate notebooks describing:
-1. `PROOF_OF_CONCEPT` - training the custom architecture on a larger dataset as a proof of concept for the model implementation
-1. `AML_ANALYSIS` - trying out the architecture on the custom built dataset for the problem statement
+1. [`PROOF_OF_CONCEPT`](src/01_PROOF_OF_CONCEPT.ipynb) - training the custom architecture on a larger dataset as a proof of concept for the model implementation
+1. [`AML_ANALYSIS`](src/02_AML_ANALYSIS.ipynb) - trying out the architecture on the custom built dataset for the problem statement
