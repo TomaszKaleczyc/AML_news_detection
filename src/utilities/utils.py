@@ -14,6 +14,7 @@ def invert_dictionary(input_dict: dict) -> dict:
     """
     return {value: key for key, value in input_dict.items()}
 
+
 def get_webpage_body(url: str, user_agent: str = 'Mozilla/5.0') -> str:
     """
     Returns the text under a given webpage body
